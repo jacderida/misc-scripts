@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Uses the `gh` tool to get a list of public repositories for a given organisation, then sorts them
+# by their last commit date. Unfortunately you don't get the last commit date from `gh repo view`,
+# so you need to clone all the repositories.
+
 set -e
 
 BASE_DEV_PATH="$HOME/dev/github"
