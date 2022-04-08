@@ -26,9 +26,10 @@ from prettytable import PrettyTable
 
 
 class RepoLicenseInfo:
-    def __init__(self, organisation, name, crate_exclusions):
+    def __init__(self, organisation, name, is_fork, crate_exclusions):
         self.organisation = organisation
         self.name = name
+        self.is_fork = is_fork
         self.licenses = {}
         self.crate_exclusions = crate_exclusions
         self.crate_manifest_licenses = {}
@@ -275,7 +276,8 @@ class RepoLicenseReport:
             "LICENSE-MIT",
         ]
         for repo in self.repo_license_info_list:
-            row = [repo.name, repo.github_license_key]
+            name = f"{repo.name}*" if repo.is_fork else f"{repo.name}"
+            row = [name, repo.github_license_key]
             row.append(self.get_license_column_value(repo.licenses, "README.md"))
             row.append(self.get_license_column_value(repo.licenses, "COPYRIGHT"))
             row.append(self.get_license_column_value(repo.licenses, "LICENSE"))
@@ -284,7 +286,7 @@ class RepoLicenseReport:
             row.append(self.get_license_column_value(repo.licenses, "LICENSE-MIT"))
             table.add_row(row)
         table.align = "l"
-        print(table)
+        print(table.get_string(sortby="REPO"))
 
 
 class SourceFilesLicenseReport:
@@ -310,7 +312,7 @@ class SourceFilesLicenseReport:
             row.append(year_column_value)
             table.add_row(row)
         table.align = "l"
-        print(table)
+        print(table.get_string(sortby="REPO"))
 
 
 def get_args():
@@ -344,15 +346,17 @@ def get_exclusion_list(exclusions_path):
     return exclusions
 
 
-def get_sorted_repo_list(github, organisation, exclusions):
+def get_repo_list(organisation, exclusions):
     print(f"Retrieving list of public repositories for {organisation}...")
+    github_pat = os.getenv("GITHUB_PAT")
+    github = Github(github_pat)
     org = github.get_organization(organisation)
     repos = org.get_repos("public")
     sorted_repos = []
     for repo in repos:
         if repo.name not in exclusions and not repo.archived:
-            sorted_repos.append(repo.name)
-    return sorted(sorted_repos)
+            sorted_repos.append(repo)
+    return sorted_repos
 
 
 def main():
@@ -360,13 +364,12 @@ def main():
     repo_exclusions = get_exclusion_list(repo_exclusions_path)
     crate_exclusions = get_exclusion_list(crate_exclusions_path)
 
-    github_pat = os.getenv("GITHUB_PAT")
-    github = Github(github_pat)
-    repo = github.get_repo("maidsafe/safe_network")
-    repos = get_sorted_repo_list(github, organisation, repo_exclusions)
+    repos = get_repo_list(organisation, repo_exclusions)
     license_info_list = []
     for repo in repos:
-        license_info = RepoLicenseInfo(organisation, repo, crate_exclusions)
+        license_info = RepoLicenseInfo(
+            organisation, repo.name, repo.fork, crate_exclusions
+        )
         license_info.parse_crate_licensing()
         license_info.parse_github_license_info()
         license_info.parse_repo_license_info()
