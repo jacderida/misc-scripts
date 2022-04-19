@@ -36,7 +36,7 @@ doctl compute droplet list --output json | jq ".[] | select(.name | startswith(\
 read -p "Proceed to remove these? [y/n] " confirm
 if [[ $confirm == "y" ]]; then
   list=( $(doctl \
-    compute droplet list --output json | jq -r ".[] | select(.name | startswith(\"$name\")) | .name") )
+    compute droplet list --output json | jq -r ".[] | select(.name | startswith(\"$name\")) | .id") )
   for droplet in "${list[@]}"
   do
     echo -n "Removing droplet $droplet..."
